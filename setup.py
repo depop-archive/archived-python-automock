@@ -49,5 +49,6 @@ setup(
 
     packages=[
         'automock',
+        'automock.conf',
     ],
 )
