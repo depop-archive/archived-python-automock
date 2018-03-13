@@ -44,7 +44,7 @@ setup(
         'flexisettings>=1.0.1,<1.1',
         'typing>=3.6.2,<4.0',
         'six',
-        'mock',
+        'mock; python_version < "3"',
     ],
 
     packages=[
