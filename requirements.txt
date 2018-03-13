@@ -1,0 +1,4 @@
+mock; python_version < '3'
+flexisettings>=1.0,<1.1
+typing
+six
