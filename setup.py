@@ -22,7 +22,7 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version=about['__version__'],
 
-    description='Overridable config for shared libraries.',
+    description="Utility to allow some functions to be 'mocked by default' when running tests.",
     long_description=long_description,
 
     url='https://github.com/depop/python-automock',

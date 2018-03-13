@@ -179,6 +179,11 @@ This will ensure that we can:
 
 and have that work reliably.
 
+**NOTE:**
+
+Always ``import automock`` and use as ``automock.register`` to ensure there is
+only one registry active.
+
 
 Customising mock factories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
