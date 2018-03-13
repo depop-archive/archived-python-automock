@@ -3,7 +3,7 @@ automock
 
 |Build Status|
 
-.. |Build Status| image:: https://circleci.com/gh/depop/python-automock.svg?style=shield&circle-token=ae7b355ec3b18c69d3370898a69932091c43d152
+.. |Build Status| image:: https://circleci.com/gh/depop/python-automock.svg?style=shield&circle-token=cbe5583fec309912d76bfc8b0321f6cfa23b7f6d
     :alt: Build Status
 
 There are some things that need to be mocked in unit tests.
