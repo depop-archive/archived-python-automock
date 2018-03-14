@@ -81,8 +81,7 @@ def _pre_import():
     be pre-imported, only those which rely on `register`)
     """
     for import_path in settings.REGISTRATION_IMPORTS:
-        module_name, obj_name = import_path.rsplit('.', 1)
-        import_module(module_name)
+        import_module(import_path)
 
 
 def start_patching(name=None):
