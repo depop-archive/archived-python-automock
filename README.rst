@@ -398,4 +398,4 @@ Now we can run the tests:
 
 .. code:: bash
 
-    py.test -v -s --pdb tests/
+    make test

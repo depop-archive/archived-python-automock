@@ -18,6 +18,8 @@ jobs:
           paths:
             - "venv"
       - run:
+          environment:
+            - AUTOMOCK_APP_CONFIG: tests.settings
           command: |
             . venv/bin/activate
             mkdir -p /tmp/results
@@ -43,6 +45,8 @@ jobs:
           paths:
             - "venv"
       - run:
+          environment:
+            - AUTOMOCK_APP_CONFIG: tests.settings
           command: |
             . venv/bin/activate
             mkdir -p /tmp/results

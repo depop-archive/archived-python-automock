@@ -1,18 +1,15 @@
-from functools import partial
 from unittest import TestCase
 
 from six.moves import mock
 
-import automock
 from automock import (
     get_mock,
-    register,
     start_patching,
     stop_patching,
     swap_mock,
     unmock,
 )
-from automock.base import _factory_map
+from automock.base import _factory_map, _pre_import
 
 
 def func_to_mock():
@@ -32,28 +29,18 @@ OTHER_MOCK_PATH = 'tests.test_automock.other_func_to_mock'
 YET_ANOTHER_MOCK_PATH = 'tests.test_automock.yet_another_func_to_mock'
 
 
-@automock.register(MOCK_PATH)
-def mock_factory(mockery='I have large ears'):
-    mocked = mock.MagicMock()
-    mocked.return_value = mockery
-    return mocked
-
-
-custom_mock_factory = partial(mock_factory, 'I like PHP')
-
-automock.register(OTHER_MOCK_PATH, custom_mock_factory)
-automock.register(YET_ANOTHER_MOCK_PATH)
-
-
 class Registration(TestCase):
+
+    def setUp(self):
+        _pre_import()
 
     def test_decorator(self):
         assert MOCK_PATH in _factory_map
-        assert _factory_map[MOCK_PATH] is mock_factory
+        assert _factory_map[MOCK_PATH]().return_value == 'I have large ears'
 
     def test_register_custom_factory(self):
         assert OTHER_MOCK_PATH in _factory_map
-        assert _factory_map[OTHER_MOCK_PATH] is custom_mock_factory
+        assert _factory_map[OTHER_MOCK_PATH]().return_value == 'I like PHP'
 
     def test_register_default_factory(self):
         assert YET_ANOTHER_MOCK_PATH in _factory_map
