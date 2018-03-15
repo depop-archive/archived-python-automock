@@ -1,7 +1,11 @@
 automock
 ========
 
-|Build Status|
+|PyPI Version| |Build Status|
+
+.. |PyPI Version| image:: http://img.shields.io/pypi/v/automock.svg?style=flat
+   :target: https://pypi.python.org/pypi/automock/
+   :alt: Latest PyPI version
 
 .. |Build Status| image:: https://circleci.com/gh/depop/python-automock.svg?style=shield&circle-token=cbe5583fec309912d76bfc8b0321f6cfa23b7f6d
     :alt: Build Status
