@@ -49,6 +49,11 @@ where the test needs a specific return value. ``automock`` makes this easy-ish.
 Usage
 -----
 
+.. code:: bash
+
+    pip install automock
+
+
 Introduction
 ~~~~~~~~~~~~
 
