@@ -11,6 +11,7 @@ from automock.utils import MultipleContextDecorator
 
 
 __all__ = (
+    'activate',
     'AutomockTestCaseMixin',
     'AutomockTestCase',
     'start_patching',
@@ -240,7 +241,7 @@ class UnMockContextDecorator(object):
         with mocked items)
         """
         @wraps(f)
-        def wrapped(*args):
+        def decorator(*args):
             stop_patching(self.name)
 
             restored = _get_from_path(self.name)
@@ -250,7 +251,7 @@ class UnMockContextDecorator(object):
             start_patching(self.name)
             return ret
 
-        return wrapped
+        return decorator
 
 
 unmock = UnMockContextDecorator
@@ -295,3 +296,37 @@ class AutomockTestCaseMixin(object):
 
 class AutomockTestCase(AutomockTestCaseMixin, TestCase):
     pass
+
+
+class ActivateContextDecorator(object):
+    """
+    If you're not using the `AutomockTestCaseMixin` or the pytest plugin to
+    automatically run all your tests with automocks patched, you can manually
+    enable automocking with this context-manager/decorator.
+    """
+
+    def __enter__(self):
+        # type: () -> Callable
+        """
+        Returns the restored function (calling code may still have a reference
+        to the mock even though we stopped patching the source path)
+        """
+        start_patching()
+        return self
+
+    def __exit__(self, *args):
+        stop_patching()
+
+    def __call__(self, f):
+        # type: (Callable) -> Callable
+        @wraps(f)
+        def decorator(*args):
+            start_patching()
+            ret = f(*args)
+            stop_patching()
+            return ret
+
+        return decorator
+
+
+activate = ActivateContextDecorator

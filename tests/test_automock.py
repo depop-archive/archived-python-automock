@@ -3,6 +3,8 @@ from unittest import TestCase
 from six.moves import mock
 
 from automock import (
+    activate,
+    AutomockTestCase,
     get_mock,
     start_patching,
     stop_patching,
@@ -11,22 +13,12 @@ from automock import (
 )
 from automock.base import _factory_map, _pre_import
 
-
-def func_to_mock():
-    return 'Go ahead, mock me'
+from tests import dummies
 
 
-def other_func_to_mock():
-    return 'Go ahead, mock me 2'
-
-
-def yet_another_func_to_mock():
-    return 'Go ahead, mock me 3'
-
-
-MOCK_PATH = 'tests.test_automock.func_to_mock'
-OTHER_MOCK_PATH = 'tests.test_automock.other_func_to_mock'
-YET_ANOTHER_MOCK_PATH = 'tests.test_automock.yet_another_func_to_mock'
+MOCK_PATH = 'tests.dummies.func_to_mock'
+OTHER_MOCK_PATH = 'tests.dummies.other_func_to_mock'
+YET_ANOTHER_MOCK_PATH = 'tests.dummies.yet_another_func_to_mock'
 
 
 class Registration(TestCase):
@@ -49,24 +41,27 @@ class Registration(TestCase):
 
 class StartStopPatching(TestCase):
 
-    def test_start_stop(self, *mocks):
-        assert func_to_mock() == 'Go ahead, mock me'
-        assert other_func_to_mock() == 'Go ahead, mock me 2'
-        assert yet_another_func_to_mock() == 'Go ahead, mock me 3'
+    def test_start_stop(self):
+        # unmocked
+        assert dummies.func_to_mock() == 'Go ahead, mock me'
+        assert dummies.other_func_to_mock() == 'Go ahead, mock me 2'
+        assert dummies.yet_another_func_to_mock() == 'Go ahead, mock me 3'
 
         start_patching()
 
-        assert func_to_mock() == 'I have large ears'
-        assert other_func_to_mock() == 'I like PHP'
-        assert isinstance(yet_another_func_to_mock(), mock.MagicMock)
+        # mocked
+        assert dummies.func_to_mock() == 'I have large ears'
+        assert dummies.other_func_to_mock() == 'I like PHP'
+        assert isinstance(dummies.yet_another_func_to_mock(), mock.MagicMock)
 
         stop_patching()
 
-        assert func_to_mock() == 'Go ahead, mock me'
-        assert other_func_to_mock() == 'Go ahead, mock me 2'
-        assert yet_another_func_to_mock() == 'Go ahead, mock me 3'
+        # unmocked
+        assert dummies.func_to_mock() == 'Go ahead, mock me'
+        assert dummies.other_func_to_mock() == 'Go ahead, mock me 2'
+        assert dummies.yet_another_func_to_mock() == 'Go ahead, mock me 3'
 
-    def test_get_mock(self, *mocks):
+    def test_get_mock(self):
         start_patching()
         mocked = get_mock(MOCK_PATH)
         assert mocked.return_value == 'I have large ears'
@@ -75,12 +70,12 @@ class StartStopPatching(TestCase):
 
 class SwapMockContextDecoratorTestCase(TestCase):
 
-    def test_context_manager(self, *mocks):
+    def test_context_manager(self):
         start_patching()
         try:
             with swap_mock(MOCK_PATH, mockery='I smell funny') as mocked:
                 # we have swapped mock for target func
-                assert func_to_mock() == 'I smell funny'
+                assert dummies.func_to_mock() == 'I smell funny'
 
                 # `as` returns the swapped mock
                 assert mocked.return_value == 'I smell funny'
@@ -90,7 +85,7 @@ class SwapMockContextDecoratorTestCase(TestCase):
                 assert swapped is mocked
 
             # default mock was restored
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             # _mocks dict was restored
             swapped = get_mock(MOCK_PATH)
@@ -98,17 +93,17 @@ class SwapMockContextDecoratorTestCase(TestCase):
         finally:
             stop_patching()
 
-    def test_decorator(self, *mocks):
+    def test_decorator(self):
         start_patching()
         try:
             decorator = swap_mock(MOCK_PATH, mockery='I smell funny')
 
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             @decorator
             def test_func(val):
                 # we have swapped mock for target func
-                assert func_to_mock() == 'I smell funny'
+                assert dummies.func_to_mock() == 'I smell funny'
 
                 # _mocks dict was patched too
                 swapped = get_mock(MOCK_PATH)
@@ -116,13 +111,13 @@ class SwapMockContextDecoratorTestCase(TestCase):
 
                 return val + 1
 
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             result = test_func(1)
             assert result == 2
 
             # default mock was restored after calling func
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             # _mocks dict was restored
             swapped = get_mock(MOCK_PATH)
@@ -133,7 +128,7 @@ class SwapMockContextDecoratorTestCase(TestCase):
 
 class UnMockContextDecoratorTestCase(TestCase):
 
-    def test_context_manager(self, *mocks):
+    def test_context_manager(self):
         start_patching()
         try:
             with unmock(MOCK_PATH) as restored:
@@ -148,7 +143,7 @@ class UnMockContextDecoratorTestCase(TestCase):
                 assert restored() == 'Go ahead, mock me'
 
             # default mock was re-enabled
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             # _mocks dict was restored
             swapped = get_mock(MOCK_PATH)
@@ -156,12 +151,12 @@ class UnMockContextDecoratorTestCase(TestCase):
         finally:
             stop_patching()
 
-    def test_decorator(self, *mocks):
+    def test_decorator(self):
         start_patching()
         try:
             decorator = unmock(MOCK_PATH)
 
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             @decorator
             def test_func(val, restored):
@@ -177,16 +172,65 @@ class UnMockContextDecoratorTestCase(TestCase):
 
                 return val + 1
 
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             result = test_func(1)
             assert result == 2
 
             # default mock still in place after calling func
-            assert func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock() == 'I have large ears'
 
             # _mocks dict was restored
             swapped = get_mock(MOCK_PATH)
             assert swapped.return_value == 'I have large ears'
         finally:
             stop_patching()
+
+
+class TestAutomockTestCase(AutomockTestCase):
+
+    def test_patched(self):
+        # mocked
+        assert dummies.func_to_mock() == 'I have large ears'
+        assert dummies.other_func_to_mock() == 'I like PHP'
+        assert isinstance(dummies.yet_another_func_to_mock(), mock.MagicMock)
+
+
+def test_activate_context_manager():
+    # unmocked
+    assert dummies.func_to_mock() == 'Go ahead, mock me'
+    assert dummies.other_func_to_mock() == 'Go ahead, mock me 2'
+    assert dummies.yet_another_func_to_mock() == 'Go ahead, mock me 3'
+
+    with activate():
+        # mocked
+        assert dummies.func_to_mock() == 'I have large ears'
+        assert dummies.other_func_to_mock() == 'I like PHP'
+        assert isinstance(dummies.yet_another_func_to_mock(), mock.MagicMock)
+
+    # unmocked
+    assert dummies.func_to_mock() == 'Go ahead, mock me'
+    assert dummies.other_func_to_mock() == 'Go ahead, mock me 2'
+    assert dummies.yet_another_func_to_mock() == 'Go ahead, mock me 3'
+
+
+def test_activate_decorator():
+    # unmocked
+    assert dummies.func_to_mock() == 'Go ahead, mock me'
+    assert dummies.other_func_to_mock() == 'Go ahead, mock me 2'
+    assert dummies.yet_another_func_to_mock() == 'Go ahead, mock me 3'
+
+    @activate()
+    def test_func(fix1):
+        assert fix1 == 'OK'
+        # mocked
+        assert dummies.func_to_mock() == 'I have large ears'
+        assert dummies.other_func_to_mock() == 'I like PHP'
+        assert isinstance(dummies.yet_another_func_to_mock(), mock.MagicMock)
+
+    test_func('OK')
+
+    # unmocked
+    assert dummies.func_to_mock() == 'Go ahead, mock me'
+    assert dummies.other_func_to_mock() == 'Go ahead, mock me 2'
+    assert dummies.yet_another_func_to_mock() == 'Go ahead, mock me 3'

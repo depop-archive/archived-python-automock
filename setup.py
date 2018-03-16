@@ -39,6 +39,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 2.7',
+        'Framework :: Pytest',
     ],
     install_requires=[
         'flexisettings>=1.0.1,<1.1',
@@ -51,4 +52,9 @@ setup(
         'automock',
         'automock.conf',
     ],
+    entry_points={
+        'pytest11': [
+            'automock = automock.pytest_plugin',
+        ]
+    },
 )
