@@ -79,8 +79,25 @@ your test cases with:
 
 For this to work you just need to do two things.
 
-#. Your test cases need to inherit from one of our helper classes,
-   e.g.:
+#. You need to ensure that the modules containing ``automock.register``
+   calls get imported before the tests run. To achieve this we have an
+   ``AUTOMOCK_REGISTRATION_IMPORTS`` config setting. This should contain string paths
+   to modules containing registration calls, e.g.:
+
+   .. code:: python
+
+        AUTOMOCK_REGISTRATION_IMPORTS = (
+            'services.users.test_mocks',
+            'services.products.test_mocks',
+            'services.paypal.test_mocks',
+        )
+
+#. If you're running your tests under `pytest <https://docs.pytest.org/en/latest/>`_
+   then you don't need to do anything else - Automock registers a pytest plugin
+   (named ``automock`` in pytest) that ensures your test cases all run patched.
+
+#. If you're running under another test-runner then your test cases need to inherit
+   from one of our helper classes, e.g.:
 
    .. code:: python
 
@@ -97,18 +114,32 @@ For this to work you just need to do two things.
    This will ensure the mock patches get applied before the tests run, and stopped
    afterwards.
 
-#. You need to ensure that the modules containing ``automock.register``
-   calls get imported before the tests run. To achieve this we have a
-   ``REGISTRATION_IMPORTS`` config setting. This should contain string paths
-   to modules containing registration calls, e.g.:
+   Alternatively you can start/stop patching manually:
 
    .. code:: python
 
-        REGISTRATION_IMPORTS = (
-            'services.users.test_mocks',
-            'services.products.test_mocks',
-            'services.paypal.test_mocks',
-        )
+        from unittest import TestCase
+
+        import automock
+
+
+        class TestStuff(TestCase):
+
+            # as a decorator
+            @automock.activate()
+            def test_stuff(self):
+                # automocks active
+                ...
+
+            # as a context-manager
+            def test_other_stuff(self):
+                # automocks inactive
+                ...
+                with automock.activate():
+                    # automocks active
+                    ...
+
+                # automocks inactive
 
 
 Configuration
