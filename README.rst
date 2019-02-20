@@ -77,6 +77,8 @@ your test cases with:
 
     @mock.patch('services.users.client.get_user')
 
+(for more scenarios see `Customising mock factories`_ below)
+
 For this to work you just need to do two things.
 
 #. You need to ensure that the modules containing ``automock.register``
