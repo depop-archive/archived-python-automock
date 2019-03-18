@@ -18,7 +18,7 @@ from automock import (
     swap_mock,
     unmock,
 )
-import automock.base
+from automock.base import _factory_map, _pre_import
 from automock.conf import settings
 
 from tests import dummies
@@ -36,19 +36,19 @@ fake = Faker()
 class Registration(TestCase):
 
     def setUp(self):
-        automock.base._pre_import()
+        _pre_import()
 
     def test_decorator(self):
-        assert MOCK_PATH in automock.base._factory_map
-        assert automock.base._factory_map[MOCK_PATH]().return_value == 'I have large ears'
+        assert MOCK_PATH in _factory_map
+        assert _factory_map[MOCK_PATH]().return_value == 'I have large ears'
 
     def test_register_custom_factory(self):
-        assert OTHER_MOCK_PATH in automock.base._factory_map
-        assert automock.base._factory_map[OTHER_MOCK_PATH]().return_value == 'I like PHP'
+        assert OTHER_MOCK_PATH in _factory_map
+        assert _factory_map[OTHER_MOCK_PATH]().return_value == 'I like PHP'
 
     def test_register_default_factory(self):
-        assert YET_ANOTHER_MOCK_PATH in automock.base._factory_map
-        assert automock.base._factory_map[YET_ANOTHER_MOCK_PATH] is mock.MagicMock
+        assert YET_ANOTHER_MOCK_PATH in _factory_map
+        assert _factory_map[YET_ANOTHER_MOCK_PATH] is mock.MagicMock
 
 
 class StartStopPatching(TestCase):
@@ -81,13 +81,20 @@ class StartStopPatching(TestCase):
 
 
 @contextmanager
-def _inner(tmpdir, name, path_to_mock):
+def dynamic_automocking_module():
     """
-    Dynamically create a temporary module file, not yet imported.
-    """
-    assert name not in sys.modules
+    Dynamically create a temporary module file, (but don't import it).
 
-    module_filepath = os.path.join(tmpdir, '{}.py'.format(name))
+    Then clean up the temporary module after using.
+    """
+    tmpdir = tempfile.mkdtemp()
+
+    module_name = '_'.join(fake.words(nb=3))
+    assert module_name not in sys.modules
+
+    module_filepath = os.path.join(tmpdir, '{}.py'.format(module_name))
+    assert not os.path.exists(module_filepath)
+
     with open(module_filepath, 'w+') as tmp:
         tmp.write("""
 import automock
@@ -99,29 +106,17 @@ def mock_factory(mockery='I have bad breath'):
     mocked = mock.MagicMock()
     mocked.return_value = mockery
     return mocked
-""".format(path_to_mock)
+""".format(PATH_TO_MOCK_DYNAMICALLY)
         )
 
-    yield module_filepath
+    sys.path.append(tmpdir)
 
+    with override_settings(
+        settings, REGISTRATION_IMPORTS=(module_name,)
+    ):
+        yield module_name
 
-@contextmanager
-def dynamic_automocking_module():
-    tmpdir = tempfile.mkdtemp()
-
-    module_name = '_'.join(fake.words(nb=3))
-    with _inner(
-        tmpdir=tmpdir, name=module_name, path_to_mock=PATH_TO_MOCK_DYNAMICALLY
-    ) as module_filepath:
-
-        sys.path.append(tmpdir)
-
-        with override_settings(
-            settings, REGISTRATION_IMPORTS=(module_name,)
-        ):
-            yield module_name
-
-        sys.path.pop(sys.path.index(tmpdir))
+    sys.path.pop(sys.path.index(tmpdir))
 
     os.unlink(module_filepath)
     shutil.rmtree(tmpdir)

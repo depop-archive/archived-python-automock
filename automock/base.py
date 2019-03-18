@@ -175,7 +175,10 @@ class SwapMockContextDecorator(MultipleContextDecorator):
             *args, **kwargs: passed through to the mock factory used to generate
                 a replacement mock to swap in
         """
-        global _factory_map
+        global _factory_map, _mocks
+
+        _pre_import()
+
         factory = _factory_map[_path]
         new_mock = factory(*args, **kwargs)
         super(SwapMockContextDecorator, self).__init__(
@@ -219,6 +222,7 @@ class UnMockContextDecorator(object):
             *args, **kwargs: passed through to the mock factory used to generate
                 a replacement mock to swap in
         """
+        _pre_import()
         self.name = name
 
     def __enter__(self):
