@@ -3,3 +3,4 @@
 pytest
 mypy; python_version >= '3.4'
 pdbpp
+faker
