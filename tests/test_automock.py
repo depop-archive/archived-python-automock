@@ -1,6 +1,13 @@
+import os
+import shutil
+import sys
+import tempfile
+from contextlib import contextmanager
 from unittest import TestCase
 
 from six.moves import mock
+from faker import Faker
+from flexisettings.utils import override_settings
 
 from automock import (
     activate,
@@ -11,7 +18,8 @@ from automock import (
     swap_mock,
     unmock,
 )
-from automock.base import _factory_map, _pre_import
+import automock.base
+from automock.conf import settings
 
 from tests import dummies
 
@@ -19,24 +27,28 @@ from tests import dummies
 MOCK_PATH = 'tests.dummies.func_to_mock'
 OTHER_MOCK_PATH = 'tests.dummies.other_func_to_mock'
 YET_ANOTHER_MOCK_PATH = 'tests.dummies.yet_another_func_to_mock'
+PATH_TO_MOCK_DYNAMICALLY = 'tests.dummies.func_to_mock_dynamically'
+
+
+fake = Faker()
 
 
 class Registration(TestCase):
 
     def setUp(self):
-        _pre_import()
+        automock.base._pre_import()
 
     def test_decorator(self):
-        assert MOCK_PATH in _factory_map
-        assert _factory_map[MOCK_PATH]().return_value == 'I have large ears'
+        assert MOCK_PATH in automock.base._factory_map
+        assert automock.base._factory_map[MOCK_PATH]().return_value == 'I have large ears'
 
     def test_register_custom_factory(self):
-        assert OTHER_MOCK_PATH in _factory_map
-        assert _factory_map[OTHER_MOCK_PATH]().return_value == 'I like PHP'
+        assert OTHER_MOCK_PATH in automock.base._factory_map
+        assert automock.base._factory_map[OTHER_MOCK_PATH]().return_value == 'I like PHP'
 
     def test_register_default_factory(self):
-        assert YET_ANOTHER_MOCK_PATH in _factory_map
-        assert _factory_map[YET_ANOTHER_MOCK_PATH] is mock.MagicMock
+        assert YET_ANOTHER_MOCK_PATH in automock.base._factory_map
+        assert automock.base._factory_map[YET_ANOTHER_MOCK_PATH] is mock.MagicMock
 
 
 class StartStopPatching(TestCase):
@@ -68,6 +80,53 @@ class StartStopPatching(TestCase):
         stop_patching()
 
 
+@contextmanager
+def _inner(tmpdir, name, path_to_mock):
+    """
+    Dynamically create a temporary module file, not yet imported.
+    """
+    assert name not in sys.modules
+
+    module_filepath = os.path.join(tmpdir, '{}.py'.format(name))
+    with open(module_filepath, 'w+') as tmp:
+        tmp.write("""
+import automock
+from six.moves import mock
+
+
+@automock.register('{}')
+def mock_factory(mockery='I have bad breath'):
+    mocked = mock.MagicMock()
+    mocked.return_value = mockery
+    return mocked
+""".format(path_to_mock)
+        )
+
+    yield module_filepath
+
+
+@contextmanager
+def dynamic_automocking_module():
+    tmpdir = tempfile.mkdtemp()
+
+    module_name = '_'.join(fake.words(nb=3))
+    with _inner(
+        tmpdir=tmpdir, name=module_name, path_to_mock=PATH_TO_MOCK_DYNAMICALLY
+    ) as module_filepath:
+
+        sys.path.append(tmpdir)
+
+        with override_settings(
+            settings, REGISTRATION_IMPORTS=(module_name,)
+        ):
+            yield module_name
+
+        sys.path.pop(sys.path.index(tmpdir))
+
+    os.unlink(module_filepath)
+    shutil.rmtree(tmpdir)
+
+
 class SwapMockContextDecoratorTestCase(TestCase):
 
     def test_context_manager(self):
@@ -94,36 +153,41 @@ class SwapMockContextDecoratorTestCase(TestCase):
             stop_patching()
 
     def test_decorator(self):
-        start_patching()
-        try:
-            decorator = swap_mock(MOCK_PATH, mockery='I smell funny')
-
-            assert dummies.func_to_mock() == 'I have large ears'
+        """
+        decorators of top-level functions and methods will be applied at import
+        time, i.e. before any call to `start_patching`, but should still work
+        """
+        with dynamic_automocking_module():
+            decorator = swap_mock(PATH_TO_MOCK_DYNAMICALLY, mockery='I laugh at bad jokes')
 
             @decorator
             def test_func(val):
                 # we have swapped mock for target func
-                assert dummies.func_to_mock() == 'I smell funny'
+                assert dummies.func_to_mock_dynamically() == 'I laugh at bad jokes'
 
                 # _mocks dict was patched too
-                swapped = get_mock(MOCK_PATH)
-                assert swapped.return_value == 'I smell funny'
+                swapped = get_mock(PATH_TO_MOCK_DYNAMICALLY)
+                assert swapped.return_value == 'I laugh at bad jokes'
 
                 return val + 1
 
-            assert dummies.func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock_dynamically() == 'Go ahead, mock me dynamically'  # un-mocked
 
-            result = test_func(1)
-            assert result == 2
+            start_patching()
+            try:
+                assert dummies.func_to_mock_dynamically() == 'I have bad breath'  # default mock
 
-            # default mock was restored after calling func
-            assert dummies.func_to_mock() == 'I have large ears'
+                result = test_func(1)
+                assert result == 2
 
-            # _mocks dict was restored
-            swapped = get_mock(MOCK_PATH)
-            assert swapped.return_value == 'I have large ears'
-        finally:
-            stop_patching()
+                # default mock was restored after calling func
+                assert dummies.func_to_mock_dynamically() == 'I have bad breath'
+
+                # _mocks dict was restored
+                swapped = get_mock(PATH_TO_MOCK_DYNAMICALLY)
+                assert swapped.return_value == 'I have bad breath'
+            finally:
+                stop_patching()
 
 
 class UnMockContextDecoratorTestCase(TestCase):
@@ -152,39 +216,44 @@ class UnMockContextDecoratorTestCase(TestCase):
             stop_patching()
 
     def test_decorator(self):
-        start_patching()
-        try:
-            decorator = unmock(MOCK_PATH)
-
-            assert dummies.func_to_mock() == 'I have large ears'
+        """
+        decorators of top-level functions and methods will be applied at import
+        time, i.e. before any call to `start_patching`, but should still work
+        """
+        with dynamic_automocking_module():
+            decorator = unmock(PATH_TO_MOCK_DYNAMICALLY)
 
             @decorator
             def test_func(val, restored):
                 # we have restored real implementation of target func
-                assert restored() == 'Go ahead, mock me'
+                assert restored() == 'Go ahead, mock me dynamically'
 
                 # mock was cleared
                 with self.assertRaises(KeyError):
-                    get_mock(MOCK_PATH)
+                    get_mock(PATH_TO_MOCK_DYNAMICALLY)
 
                 # other mocks un-touched
                 get_mock(OTHER_MOCK_PATH)
 
                 return val + 1
 
-            assert dummies.func_to_mock() == 'I have large ears'
+            assert dummies.func_to_mock_dynamically() == 'Go ahead, mock me dynamically'
 
-            result = test_func(1)
-            assert result == 2
+            start_patching()
+            try:
+                assert dummies.func_to_mock_dynamically() == 'I have bad breath'
 
-            # default mock still in place after calling func
-            assert dummies.func_to_mock() == 'I have large ears'
+                result = test_func(1)
+                assert result == 2
 
-            # _mocks dict was restored
-            swapped = get_mock(MOCK_PATH)
-            assert swapped.return_value == 'I have large ears'
-        finally:
-            stop_patching()
+                # default mock still in place after calling func
+                assert dummies.func_to_mock_dynamically() == 'I have bad breath'
+
+                # _mocks dict was restored
+                swapped = get_mock(PATH_TO_MOCK_DYNAMICALLY)
+                assert swapped.return_value == 'I have bad breath'
+            finally:
+                stop_patching()
 
 
 class TestAutomockTestCase(AutomockTestCase):
