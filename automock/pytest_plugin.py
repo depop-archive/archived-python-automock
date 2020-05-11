@@ -1,9 +1,9 @@
-import automock
+import pytest
+
+import automock as automock_lib
 
 
-def pytest_runtest_setup(item):
-    automock.start_patching()
-
-
-def pytest_runtest_teardown(item):
-    automock.stop_patching()
+@pytest.fixture
+def automock():
+    with automock_lib.activate():
+        yield
