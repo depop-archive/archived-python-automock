@@ -442,4 +442,4 @@ Now we can run the tests:
 
 .. code:: bash
 
-    make test
+    make -f MAKEFILE test

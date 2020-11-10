@@ -14,7 +14,7 @@ from tests import dummies
 pytest_plugins = 'automock.pytest_plugin'
 
 
-def test_pytest_plugin():
+def test_pytest_plugin(automock):
     # plugin has patched our registered automocks
     assert dummies.func_to_mock() == 'I have large ears'
     assert dummies.other_func_to_mock() == 'I like PHP'
